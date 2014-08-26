@@ -9,13 +9,11 @@ Tandem     = require('tandem-core')
 
 
 class Line extends LinkedList.Node
-  @CLASS_NAME : 'line'
   @ID_PREFIX  : 'line-'
 
   constructor: (@doc, @node) ->
     @id = _.uniqueId(Line.ID_PREFIX)
     @formats = {}
-    dom(@node).addClass(Line.CLASS_NAME)
     this.rebuild()
     super(@node)
 
@@ -154,7 +152,7 @@ class Line extends LinkedList.Node
     return true
 
   resetContent: ->
-    @node.id = @id unless @node.id == @id
+    @node._quillLineId = @id unless @node._quillLineId == @id
     @outerHTML = @node.outerHTML
     @length = 1
     ops = _.map(@leaves.toArray(), (leaf) =>

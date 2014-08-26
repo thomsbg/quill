@@ -28,7 +28,7 @@ class Document
   findLine: (node) ->
     while node? and !dom.BLOCK_TAGS[node.tagName]?
       node = node.parentNode
-    line = if node? then @lineMap[node.id] else null
+    line = if node? then @lineMap[node._quillLineId] else null
     return if line?.node == node then line else null
 
   findLineAt: (index) ->
