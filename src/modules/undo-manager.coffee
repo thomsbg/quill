@@ -1,6 +1,6 @@
 Quill  = require('../quill')
 _      = Quill.require('lodash')
-Tandem = Quill.require('tandem-core')
+Delta  = Quill.require('delta')
 
 
 class UndoManager
@@ -30,7 +30,7 @@ class UndoManager
       )
     )
     @quill.on(@quill.constructor.events.TEXT_CHANGE, (delta, origin) =>
-      if delta.isEqual(@emittedDelta)
+      if _.isEqual(delta, @emittedDelta)
         @emittedDelta = null
         return
       this.record(delta, @oldDelta)
@@ -44,20 +44,15 @@ class UndoManager
     @oldDelta = @quill.getContents()
 
   record: (changeDelta, oldDelta) ->
-    return if changeDelta.isIdentity()
+    return unless changeDelta.ops.length > 0
     @stack.redo = []
     try
-      undoDelta = oldDelta.invert(changeDelta)
+      undoDelta = @quill.getContents().diff(@oldDelta)
       timestamp = new Date().getTime()
       if @lastRecorded + @options.delay > timestamp and @stack.undo.length > 0
         change = @stack.undo.pop()
-        if undoDelta.canCompose(change.undo) and change.redo.canCompose(changeDelta)
-          undoDelta = undoDelta.compose(change.undo)
-          changeDelta = change.redo.compose(changeDelta)
-        else
-          # TODO log warning
-          this.clear()
-          @lastRecorded = timestamp
+        undoDelta = undoDelta.compose(change.undo)
+        changeDelta = change.redo.compose(changeDelta)
       else
         @lastRecorded = timestamp
       @stack.undo.push({
@@ -77,12 +72,16 @@ class UndoManager
 
   _getLastChangeIndex: (delta) ->
     lastIndex = 0
-    delta.apply((index, text) ->
-      lastIndex = Math.max(index + text.length, lastIndex)
-    , (index, length) ->
-      lastIndex = Math.max(index, lastIndex)
-    , (index, length) ->
-      lastIndex = Math.max(index + length, lastIndex)
+    index = 0
+    delta.ops.forEach((op) ->
+      if op.insert?
+        lastIndex = Math.max(index + (op.insert.length or 1), lastIndex)
+      else if op.delete?
+        lastIndex = Math.max(index, lastIndex)
+      else if op.retain?
+        if op.attributes?
+          lastIndex = Math.max(index + op.retain, lastIndex)
+        index += op.retain
     )
     return lastIndex
 

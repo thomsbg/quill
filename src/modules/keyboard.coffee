@@ -1,7 +1,7 @@
 Quill  = require('../quill')
 _      = Quill.require('lodash')
 dom    = Quill.require('dom')
-Tandem = Quill.require('tandem-core')
+Delta  = Quill.require('delta')
 
 
 class Keyboard
@@ -31,7 +31,7 @@ class Keyboard
     else
       delta = @quill.getContents(range)
     value = delta.ops.length == 0 or !_.all(delta.ops, (op) ->
-      return op.attributes[format]
+      return op.attributes?[format]
     )
     if range.isCollapsed()
       @quill.prepareFormat(format, value)
@@ -82,14 +82,10 @@ class Keyboard
     # Behavior according to Google Docs + Word
     # When tab on one line, regardless if shift is down, delete selection and insert a tab
     # When tab on multiple lines, indent each line if possible, outdent if shift is down
-    delta = Tandem.Delta.makeDelta({
-      startLength: @quill.getLength()
-      ops: [
-        { start: 0, end: range.start }
-        { value: "\t" }
-        { start: range.end, end: @quill.getLength() }
-      ]
-    })
+    delta = new Delta().retain(range.start)
+                       .insert("\t")
+                       .delete(range.end - range.start)
+                       .retain(@quill.getLength() - range.end)
     @quill.updateContents(delta)
     @quill.setSelection(range.start + 1, range.start + 1)
 
